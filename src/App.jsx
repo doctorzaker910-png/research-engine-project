@@ -2114,7 +2114,7 @@ function StudentView({
                     : 'Stage ' + (currentStage + 2 <= 14 ? currentStage + 2 : 'completion') + ' remains locked until supervisor approval.'}
               </p>
 
-              {record.aiReadinessReportStatus === 'failed' && (
+              {['failed', 'generating_ai_report'].includes(record.aiReadinessReportStatus) && (
                 <button onClick={retryAiReport} style={{ marginTop: 12 }}>
                   Retry AI Report
                 </button>
