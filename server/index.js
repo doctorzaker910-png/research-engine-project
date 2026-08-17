@@ -95,10 +95,12 @@ app.post('/api/readiness-report', async (req, res) => {
           name: 'readiness_report',
           schema: {
             type: 'object',
+            additionalProperties: false,
             properties: {
               stageSummary: { type: 'string' },
               progressionAnalysis: {
                 type: 'object',
+                additionalProperties: false,
                 properties: {
                   initialReasoning: { type: 'string' },
                   finalReasoning: { type: 'string' },
@@ -110,6 +112,7 @@ app.post('/api/readiness-report', async (req, res) => {
                 type: 'array',
                 items: {
                   type: 'object',
+                  additionalProperties: false,
                   properties: {
                     indicator: { type: 'string' },
                     status: {
@@ -124,16 +127,35 @@ app.post('/api/readiness-report', async (req, res) => {
               },
               evidenceAssessment: {
                 type: 'object',
+                additionalProperties: false,
                 properties: {
-                  strengths: { type: 'array', 'items': { type: 'string' } },
-                  missingEvidence: { type: 'array', 'items': { type: 'string' } },
-                  unsupportedAssumptions: { type: 'array', 'items': { type: 'string' } },
+                  strengths: {
+                    type: 'array',
+                    items: { type: 'string' },
+                  },
+                  missingEvidence: {
+                    type: 'array',
+                    items: { type: 'string' },
+                  },
+                  unsupportedAssumptions: {
+                    type: 'array',
+                    items: { type: 'string' },
+                  },
                 },
                 required: ['strengths', 'missingEvidence', 'unsupportedAssumptions'],
               },
-              remainingWork: { type: 'array', items: { type: 'string' } },
-              supervisorAttention: { type: 'array', items: { type: 'string' } },
-              suggestedSupervisorQuestions: { type: 'array', items: { type: 'string' } },
+              remainingWork: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              supervisorAttention: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+              suggestedSupervisorQuestions: {
+                type: 'array',
+                items: { type: 'string' },
+              },
               readinessForReview: {
                 type: 'string',
                 enum: ['ready_for_supervisor_review', 'review_with_attention', 'insufficient_submission'],
