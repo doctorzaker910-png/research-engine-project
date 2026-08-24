@@ -1697,23 +1697,24 @@ ${record.attempt || 'No initial attempt recorded.'}`
         </main>
       ) : (
         <>
-          {mode === 'student' && (
-            <StudentView
-              project={project}
-              setProject={setProject}
-              started={started}
-              startPathway={startPathway}
-              currentStage={currentStage}
-              getRecord={getRecord}
-              updateRecord={updateRecord}
-              submitInitialAttempt={submitInitialAttempt}
-              copyPrompt={copyPrompt}
-              copied={copied}
-              copyAiReadinessPrompt={copyAiReadinessPrompt}
-              copiedReadiness={copiedReadiness}
-              submitForSupervisor={submitForSupervisor}
-            />
-          )}
+{mode === 'student' && (
+  <StudentView
+    retryAiReport={retryAiReport}
+    project={project}
+    setProject={setProject}
+    started={started}
+    startPathway={startPathway}
+    currentStage={currentStage}
+    getRecord={getRecord}
+    updateRecord={updateRecord}
+    submitInitialAttempt={submitInitialAttempt}
+    copyPrompt={copyPrompt}
+    copied={copied}
+    copyAiReadinessPrompt={copyAiReadinessPrompt}
+    copiedReadiness={copiedReadiness}
+    submitForSupervisor={submitForSupervisor}
+  />
+)}
 
           {mode === 'supervisor' && (
             <SupervisorView
@@ -1752,6 +1753,7 @@ function StudentView({
   copyAiReadinessPrompt,
   copiedReadiness,
   submitForSupervisor,
+  retryAiReport,
 }) {
   if (currentStage >= stages.length) {
     return (
