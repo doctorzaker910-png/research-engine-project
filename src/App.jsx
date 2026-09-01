@@ -75,7 +75,7 @@ Do not state Pass, Fail, Approved, Competent or Not Competent. Do not make the c
 The AI report is advisory only. The supervisor retains sole authority to determine competency and progression.`
 }
 
-const stages = [
+export const stages = [
   {
     title: 'Define the research problem',
     objective:
