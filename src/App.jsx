@@ -1402,6 +1402,7 @@ ${record.attempt || 'No initial attempt recorded.'}`
       }
 
       updateRecord(currentStage, {
+        submitted: true,
         aiReadinessReport: {
           generatedAt: new Date().toISOString(),
           model: data.model || 'gpt-4.1-mini',
@@ -1415,6 +1416,7 @@ ${record.attempt || 'No initial attempt recorded.'}`
       return true
     } catch (error) {
       updateRecord(currentStage, {
+        submitted: true,
         aiReadinessReport: {
           generatedAt: new Date().toISOString(),
           model: '',
