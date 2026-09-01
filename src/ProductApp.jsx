@@ -20,13 +20,17 @@ const blankWork = (caseId, stageNumber) => ({
 
 function ProductApp() {
   const [session, setSession] = useState(null)
+  const [recoveringPassword, setRecoveringPassword] = useState(false)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session || null))
-    const { data } = supabase.auth.onAuthStateChange((_event, next) => setSession(next))
+    const { data } = supabase.auth.onAuthStateChange((event, next) => {
+      setSession(next)
+      if (event === 'PASSWORD_RECOVERY') setRecoveringPassword(true)
+    })
     return () => data.subscription.unsubscribe()
   }, [])
 
@@ -47,6 +51,7 @@ function ProductApp() {
 
   if (loading) return <PageMessage title="Loading RAE…" />
   if (!session) return <AuthScreen notice={notice} setNotice={setNotice} />
+  if (recoveringPassword) return <ResetPasswordScreen setRecoveringPassword={setRecoveringPassword} notice={notice} setNotice={setNotice} />
   if (!profile) return <PageMessage title="Preparing your account…" detail={notice || 'Refresh after confirming your email.'} />
 
   return (
@@ -90,6 +95,20 @@ function AuthScreen({ notice, setNotice }) {
     else if (signup && !result.data.session) setNotice('Account created. Check your email to confirm, then sign in.')
   }
 
+  async function requestPasswordReset() {
+    if (!email) {
+      setNotice('Enter your email address first, then select Forgot password.')
+      return
+    }
+    setBusy(true)
+    setNotice('')
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    })
+    setBusy(false)
+    setNotice(error ? error.message : 'Password reset email sent. Open the link in that email to choose a new password.')
+  }
+
   return (
     <div className="app">
       <header className="header"><div className="brand"><h1>RAE Research Engine</h1><p>Research competency learning with human supervision</p></div></header>
@@ -105,11 +124,54 @@ function AuthScreen({ notice, setNotice }) {
             <label><strong>Password</strong><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} style={inputStyle} /></label>
             <button disabled={busy} style={{ width: '100%', marginTop: 12 }}>{busy ? 'Please wait…' : signup ? 'Create account' : 'Sign in'}</button>
           </form>
+          {!signup && <button disabled={busy} onClick={requestPasswordReset} style={{ background: '#475467', marginRight: 8 }}>Forgot password</button>}
           <button onClick={() => { setSignup(!signup); setNotice('') }} style={{ background: '#667085' }}>{signup ? 'I already have an account' : 'Create student account'}</button>
           <div className="review-box" style={{ marginTop: 22, textAlign: 'left' }}>
             <strong>Privacy and AI notice</strong>
             <p>Do not enter patient names, medical record numbers, phone numbers, or confidential clinical data. Submitted learning work is analyzed by AI to generate advisory feedback for the assigned supervisor. The supervisor alone decides competency and progression.</p>
           </div>
+        </section>
+      </main>
+    </div>
+  )
+}
+
+function ResetPasswordScreen({ setRecoveringPassword, notice, setNotice }) {
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function updatePassword(event) {
+    event.preventDefault()
+    if (password !== confirmPassword) {
+      setNotice('Passwords do not match.')
+      return
+    }
+    setBusy(true)
+    setNotice('')
+    const { error } = await supabase.auth.updateUser({ password })
+    setBusy(false)
+    if (error) setNotice(error.message)
+    else {
+      setNotice('Password updated successfully. You are now signed in.')
+      setRecoveringPassword(false)
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }
+
+  return (
+    <div className="app">
+      <header className="header"><div className="brand"><h1>RAE Research Engine</h1><p>Secure password recovery</p></div></header>
+      <main className="container">
+        <section className="hero">
+          <div className="eyebrow">PASSWORD RECOVERY</div>
+          <h2>Choose a new password</h2>
+          {notice && <div className="review-box">{notice}</div>}
+          <form onSubmit={updatePassword} style={{ maxWidth: 520, margin: '20px auto', textAlign: 'left' }}>
+            <label><strong>New password</strong><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} autoComplete="new-password" style={inputStyle} /></label>
+            <label><strong>Confirm new password</strong><input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={8} autoComplete="new-password" style={inputStyle} /></label>
+            <button disabled={busy} style={{ width: '100%', marginTop: 12 }}>{busy ? 'Updating…' : 'Update password'}</button>
+          </form>
         </section>
       </main>
     </div>
