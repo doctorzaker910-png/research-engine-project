@@ -26,7 +26,22 @@ function ProductApp() {
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session || null))
+    const params = new URLSearchParams(window.location.search)
+    const tokenHash = params.get('token_hash')
+    const type = params.get('type')
+    if (tokenHash && type === 'recovery') {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).then(({ data, error }) => {
+        if (error) setNotice(`Password recovery link is invalid or expired: ${error.message}`)
+        else {
+          setSession(data.session || null)
+          setRecoveringPassword(true)
+          window.history.replaceState({}, document.title, window.location.pathname)
+        }
+        setLoading(false)
+      })
+    } else {
+      supabase.auth.getSession().then(({ data }) => setSession(data.session || null))
+    }
     const { data } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next)
       if (event === 'PASSWORD_RECOVERY') setRecoveringPassword(true)
