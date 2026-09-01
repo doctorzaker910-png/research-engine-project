@@ -124,6 +124,31 @@ describe('RAE functional competency pathway', () => {
     expect(saved.stages[0].submittedToSupervisor).toBe(true)
   })
 
+  it('persists the submitted state when refreshed while the AI report is generating', async () => {
+    const user = userEvent.setup()
+    fetch.mockImplementationOnce(() => new Promise(() => {}))
+    const first = render(<App />)
+    await createCase(user)
+    await user.type(screen.getByPlaceholderText('Write your own reasoning before using AI...'), 'Initial reasoning')
+    await user.click(screen.getByRole('button', { name: 'Submit initial attempt' }))
+    await user.type(screen.getByPlaceholderText('Explain what changed in your understanding...'), 'Learning reflection')
+    await user.type(screen.getByPlaceholderText('Write your improved final submission...'), 'Final submission')
+    await user.click(screen.getByRole('button', { name: 'Submit for supervisor review' }))
+
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem('rae_cases'))[0]
+      expect(saved.stages[0].submittedToSupervisor).toBe(true)
+      expect(saved.stages[0].aiReadinessReport.status).toBe('generating_ai_report')
+    })
+    first.unmount()
+
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: 'Supervisor' }))
+    expect(await screen.findByText('Stage 1 Competency Review')).toBeInTheDocument()
+    expect(screen.queryByText('No submission waiting')).not.toBeInTheDocument()
+    expect(screen.getByText('Generating')).toBeInTheDocument()
+  })
+
   it('rejects incomplete work and returns a reviewed stage for revision without unlocking the next stage', async () => {
     const user = userEvent.setup()
     render(<App />)
