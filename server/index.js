@@ -1,6 +1,7 @@
 import express from 'express'
-import cors from 'cors'
 import dotenv from 'dotenv'
+import helmet from 'helmet'
+import { rateLimit } from 'express-rate-limit'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import OpenAI from 'openai'
@@ -9,15 +10,38 @@ dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 3001
+const SUPABASE_URL = 'https://ixylbdkzczeimrugppxs.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_eSNBvUIG4R6U1Es8xnw_jQ_Z6O3KisR'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const frontendDistPath = path.resolve(__dirname, '../dist')
 
-app.use(cors())
-app.use(express.json({ limit: '1mb' }))
+app.use(helmet({ contentSecurityPolicy: { directives: { defaultSrc: ["'self'"], connectSrc: ["'self'", SUPABASE_URL], imgSrc: ["'self'", 'data:'], styleSrc: ["'self'", "'unsafe-inline'"], scriptSrc: ["'self'"] } } }))
+app.use(express.json({ limit: '100kb' }))
+app.get('/healthz', (_req, res) => res.json({ ok: true }))
 
-app.post('/api/readiness-report', async (req, res) => {
+const aiLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false })
+
+async function requireAuthenticatedUser(req, res, next) {
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '')
+  if (!token) return res.status(401).json({ error: 'Authentication required.' })
+  try {
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8000) })
+    if (!response.ok) return res.status(401).json({ error: 'Invalid or expired session.' })
+    req.user = await response.json()
+    req.accessToken = token
+    return next()
+  } catch {
+    return res.status(503).json({ error: 'Authentication service unavailable.' })
+  }
+}
+
+function validText(value, min = 1, max = 12000) {
+  return typeof value === 'string' && value.trim().length >= min && value.length <= max
+}
+
+app.post('/api/readiness-report', aiLimiter, requireAuthenticatedUser, async (req, res) => {
   try {
     const {
       caseId,
@@ -34,9 +58,16 @@ app.post('/api/readiness-report', async (req, res) => {
       evidence,
     } = req.body || {}
 
-    if (!stageTitle || !stageObjective || !competencyIndicators) {
+    if (!Number.isInteger(stageNumber) || stageNumber < 1 || stageNumber > 14 || !validText(stageTitle, 2, 150) || !validText(stageObjective, 5, 1000) || !Array.isArray(competencyIndicators) || competencyIndicators.length < 1 || competencyIndicators.length > 10 || !validText(initialAttempt, 1) || !validText(studentReflection, 1) || !validText(finalSubmission, 1)) {
       return res.status(400).json({ error: 'Missing required fields for readiness report.' })
     }
+
+    const caseResponse = await fetch(`${SUPABASE_URL}/rest/v1/rae_cases?id=eq.${encodeURIComponent(caseId)}&select=id`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${req.accessToken}` },
+      signal: AbortSignal.timeout(8000),
+    })
+    const allowedCases = caseResponse.ok ? await caseResponse.json() : []
+    if (allowedCases.length !== 1) return res.status(403).json({ error: 'You do not have access to this research case.' })
 
     if (!process.env.OPENAI_API_KEY) {
       return res.status(503).json({
@@ -68,7 +99,7 @@ app.post('/api/readiness-report', async (req, res) => {
       })
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 30000, maxRetries: 1 })
 
     const indicatorList = (competencyIndicators || [])
       .map((indicator, index) => `${index + 1}. ${indicator.label || indicator}`)
