@@ -1403,6 +1403,7 @@ ${record.attempt || 'No initial attempt recorded.'}`
 
       updateRecord(currentStage, {
         submitted: true,
+        checks: stages[currentStage].indicators.map(() => false),
         aiReadinessReport: {
           generatedAt: new Date().toISOString(),
           model: data.model || 'gpt-4.1-mini',
@@ -1417,6 +1418,7 @@ ${record.attempt || 'No initial attempt recorded.'}`
     } catch (error) {
       updateRecord(currentStage, {
         submitted: true,
+        checks: stages[currentStage].indicators.map(() => false),
         aiReadinessReport: {
           generatedAt: new Date().toISOString(),
           model: '',
@@ -2194,6 +2196,8 @@ function SupervisorView({
   copyAiReadinessPrompt,
   retryAiReport,
 }) {
+  const [showAiReport, setShowAiReport] = useState(false)
+
   if (!started) {
     return (
       <main className="container">
@@ -2238,8 +2242,6 @@ function SupervisorView({
 
   const aiReportStatus = aiReportMeta.status || 'not_started'
   const aiReady = aiReportStatus === 'awaiting_supervisor_review' || aiReportStatus === 'ready'
-  const [showAiReport, setShowAiReport] = useState(false)
-
   return (
     <main className="container">
       <section className="hero">
